@@ -87,16 +87,16 @@ def data_definition_hyp():
     return X, y, groups, cv, df
 
 
-def gen_converter():
-    convert_dict = {}
-    convert_dict[60]=0
-    convert_dict
-    for i in range (1, 15):
-        convert_dict[i]=i
-    convert_dict[16]=15
-    convert_dict[18]=16
-    convert_dict[24]=17
-    return convert_dict
+# def gen_converter():
+#     convert_dict = {}
+#     convert_dict[60]=0
+#     convert_dict
+#     for i in range (1, 15):
+#         convert_dict[i]=i
+#     convert_dict[16]=15
+#     convert_dict[18]=16
+#     convert_dict[24]=17
+#     return convert_dict
 
 
 def remove_small_groups():

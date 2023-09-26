@@ -31,7 +31,7 @@ from xgboost import XGBClassifier
 HEAD_OF_DATA = 1000
 LR = 0.1
 NUM_CV = 5
-NUM_ITER = 100
+NUM_ITER = 150
 UNDERSAMPLE_FACTOR = 3
 
 
@@ -39,10 +39,6 @@ UNDERSAMPLE_FACTOR = 3
 # with open("/vol/ek/Home/orlyl02/working_dir/oligopred/xgboost/train_set.pkl", 'rb') as f:
 #     overall_train_set = pickle.load(f)
 
-# using the new clustering with 0.3 coverage:
-overall_train_set = pd.read_pickle("/vol/ek/Home/orlyl02/working_dir/oligopred/clustering/re_clust_c0.3/train_set_c0.3.pkl")
-# index reset is important for the stratified splitting and the saving to lists
-overall_train_set.reset_index(drop=True, inplace=True)
 
 
 def data_definition(overall_train_set):
@@ -68,17 +64,19 @@ def data_definition(overall_train_set):
     return X, y, groups, cv, X_train, y_train, y_test, df
 
 
-def data_definition_hyp():
+def data_definition_hyp(overall_train_set):
     overall_train_set = remove_small_groups()
     # overall_train_set = downsample_mjorities(overall_train_set)
+    overall_train_set = calc_weights(overall_train_set)
     X = pd.DataFrame(np.vstack(overall_train_set['embeddings']))
     y = overall_train_set["nsub"]
     groups = overall_train_set["representative"]
     cv = StratifiedGroupKFold(n_splits=NUM_CV)
     df = pd.DataFrame(np.vstack(X))
+    weights = overall_train_set["weights"]
     # convert_dict = gen_converter()
     # y = y.map(convert_dict)
-    return X, y, groups, cv, df
+    return X, y, groups, cv, df, weights
 
 
 def remove_small_groups():
@@ -110,6 +108,19 @@ def downsample_mjorities(overall_train_set):
     overall_train_set = overall_train_set[overall_train_set.code.isin(X["code"].tolist())]
     return overall_train_set
 
+def calc_weights(overall_train_set):
+    nsub_dict = {}
+    nsub_list = sorted(overall_train_set.nsub.unique().tolist())
+    for nsub in nsub_list:
+        # print(nsub, overall_train_set[overall_train_set["nsub"] == nsub].shape[0])
+        nsub_dict[nsub]=overall_train_set[overall_train_set["nsub"] == nsub].shape[0]
+    for k, v in nsub_dict.items():
+        nsub_dict[k] = round(20/v, 4)
+    overall_train_set["weights"] = np.sqrt(overall_train_set.nsub.map(nsub_dict))
+#    overall_train_set["weights"] = overall_train_set.nsub.map(nsub_dict)
+
+    print(overall_train_set["weights"])
+    return overall_train_set
 
 
 def use_head_of_data(overall_train_set):
@@ -196,7 +207,7 @@ def generate_grid():
     return xgb_grid
 
 
-def hyperparam_search(xgb_grid, groups, X, y):
+def hyperparam_search(xgb_grid, groups, X, y, weights):
     # Code from here:
     # https://towardsdatascience.com/cross-validation-and-hyperparameter-tuning-how-to-optimise-your-machine-learning-model-13f005af9d7d
     y = y.values.astype(int)
@@ -222,7 +233,7 @@ def hyperparam_search(xgb_grid, groups, X, y):
                                     return_train_score=True) #, pre_dispatch=NUM_ITER, random_state=1
     # Fit the random search model
     # print("starting the fit")
-    xgb_random.fit(X, y, groups=groups)
+    xgb_random.fit(X, y, groups=groups, sample_weight=weights)
     # Get the optimal parameters
     xgb_random.best_params_
 
@@ -283,9 +294,15 @@ def k_fold(X, y, groups):
 
 if __name__ == "__main__":
     # X, y, groups, cv, df = use_head_of_data(overall_train_set)
-    X, y, groups, cv, df = data_definition_hyp()
+    # using the new clustering with 0.3 coverage:
+    overall_train_set = pd.read_pickle(
+        "/vol/ek/Home/orlyl02/working_dir/oligopred/clustering/re_clust_c0.3/train_set_c0.3.pkl")
+    # index reset is important for the stratified splitting and the saving to lists
+    overall_train_set.reset_index(drop=True, inplace=True)
+
+    X, y, groups, cv, df, weights = data_definition_hyp(overall_train_set)
     xgb_grid = generate_grid()
-    best_params = hyperparam_search(xgb_grid, groups, X, y)
+    best_params = hyperparam_search(xgb_grid, groups, X, y, weights)
     print(best_params)
     # train_from_hyp(best_params, X, y, groups)
     #

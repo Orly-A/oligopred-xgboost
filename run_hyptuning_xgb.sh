@@ -4,5 +4,5 @@
 #SBATCH -c 38
 
 source /vol/ek/Home/orlyl02/working_dir/python3_venv/bin/activate.csh
-/vol/ek/Home/orlyl02/working_dir/python3_venv/bin/python3 /vol/ek/Home/orlyl02/working_dir/oligopred/xgboost/second_hyp_param_tuning.py > runpicasso_cov03_nodownsample_b.log
+/vol/ek/Home/orlyl02/working_dir/python3_venv/bin/python3 /vol/ek/Home/orlyl02/working_dir/oligopred/xgboost/second_hyp_param_tuning.py > /vol/ek/Home/orlyl02/working_dir/oligopred/xgboost/cov03_runs/runpicasso_cov03_weights.log
 
